@@ -5,9 +5,9 @@ from csv import writer
 
 headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36"}
 
-# schedule the script to run at specific times during the day
-
-# create a database and store csv files in it
+# TODO: Schedule the script to run at specific times during the day
+# TODO: Create a database and store csv files in it
+# TODO: Search an item using search bar
 
 def get_delivery_time():
 	url = "https://www.wollplatz.de/versandkosten-und-lieferung"
@@ -18,18 +18,18 @@ def get_delivery_time():
 	for i in table.find_all('td'):
 		title = i.text
 		tokens.append(title)
-
 	delivery_time = tokens[9]
 	return delivery_time
 
-def extract(page):
+# Extracts page source code 
+def get_page_info(page):
 	url = "https://www.wollplatz.de/wolle?page={}".format(page)
-	# print(url)
 	r = requests.get(url, headers=headers)
 	soup = BeautifulSoup(r.content, 'html.parser')
 	return soup
 
-def transform(soup):
+# Groups name and the url of items in a dictionary 
+def get_products(page_info):
 	my_dict = {}
 	divs = soup.find_all('div', class_='productlistholder')
 	for item in divs:
@@ -47,13 +47,15 @@ def get_product_info(url):
 	name = soup.find('h1', id="pageheadertitle").text.strip()
 	price = soup.find('span', class_="product-price").text.strip()
 	# get specifications table
-	specifications_table = soup.find('div', id="ContentPlaceHolder1_upPanelTemplateValues")
+	specifications_table = soup.find('div', id="pdetailTableSpecs")
 	specifications_tokens = []
 	for i in specifications_table.find_all('td'):
 		title = i.text
 		specifications_tokens.append(title)
-	composition = specifications_tokens[7]
-	needle_size = specifications_tokens[9]
+	needle_size_index = specifications_tokens.index("Nadelstärke") + 1
+	composition_index = specifications_tokens.index("Zusammenstellung") + 1
+	composition = specifications_tokens[needle_size_index]
+	needle_size = specifications_tokens[composition_index]
 	result = [name, price, get_delivery_time(), needle_size, composition]
 	return result
 
@@ -65,8 +67,8 @@ with open('wool_comparison.csv', 'w', encoding='utf8', newline='') as f:
 	number_of_pages = 31
 	page = 1
 	for i in range(1, 31):
-		c = extract(page)
-		products = transform(c)
+		page_info = get_page_info(page)
+		products = get_products(page_info)
 		for key in products:
 			if (key == "Stylecraft Special DK"):
 				info = get_product_info(products[key])
