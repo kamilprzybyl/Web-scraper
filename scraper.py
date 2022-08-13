@@ -88,7 +88,7 @@ def main():
 	conn = sqlite3.connect('wool_comparison.db')
 	c = conn.cursor()
 	# The line below creates the table. Since I've already created one I commented it out
-	c.execute('''CREATE TABLE wool_comparison(Date DATE, Name TEXT, Price TEXT, Delivery_time TEXT, Needle_size TEXT, Composition TEXT)''')
+	# c.execute('''CREATE TABLE wool_comparison(Date DATE, Name TEXT, Price TEXT, Delivery_time TEXT, Needle_size TEXT, Composition TEXT)''')
 
 	number_of_pages = 32
 	found = 0
