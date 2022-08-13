@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import requests
 import sqlite3
 import datetime
+import os.path
 
 # I was thinking about using selenium to search for an element
 # via the search-bar on top of the website.
@@ -41,8 +42,18 @@ def get_delivery_time():
 	delivery_time = tokens[9] #TODO: make it not hard-coded way
 	return delivery_time
 
-# Extracts page source code 
-def get_page_info(page):
+def get_number_of_pages():
+	url = 'https://www.wollplatz.de/wolle'
+	r = requests.get(url)
+	soup = BeautifulSoup(r.content, 'html.parser')
+	divs = soup.find_all('div', class_='paginginnerholder')
+	for item in divs:
+		title = item.find('span', class_="paginavan").text.strip()
+	number_of_pages = title.split(" ")[3]
+	return int(number_of_pages)
+
+# Extracts page source code
+def extract(page):
 	url = 'https://www.wollplatz.de/wolle?page={}'.format(page)
 	r = requests.get(url)
 	soup = BeautifulSoup(r.content, 'html.parser')
@@ -83,29 +94,42 @@ def get_product_info(url):
 	result = [current_date, name, price, get_delivery_time(), needle_size, composition]
 	return result
 
+def table_exists(db, tablename):
+	c = db.cursor()
+	c.execute('''
+		SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{}';
+		'''.format(tablename))
+	if (c.fetchone()[0] == 1):
+		return True
+
+	return False
+
 def main():
-	conn = sqlite3.connect('wool_comparison.db')
-	c = conn.cursor()
-	# The line below creates the table. Since I've already created one I commented it out
-	# c.execute('''CREATE TABLE wool_comparison(Date DATE, Name TEXT, Price TEXT, Delivery_time TEXT, Needle_size TEXT, Composition TEXT)''')
+	BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+	db_path = os.path.join(BASE_DIR, "wool_comparison.db")
+	with sqlite3.connect(db_path) as db:
+		c = db.cursor()
+		if (table_exists(db, "wool_comparison") == False):
+			c.execute('''CREATE TABLE wool_comparison(Date DATE, Name TEXT, Price TEXT, Delivery_time TEXT, Needle_size TEXT, Composition TEXT)''')
 
-	number_of_pages = 32
-	found = 0
-	print('START...')
-	for page in range(1, number_of_pages + 1):
-		print('page number {}/{}'.format(str(page), number_of_pages))
-		page_info = get_page_info(page)
-		products = get_products(page_info)
-		for key in products:
-			if key in items:
-				info = get_product_info(products[key])
-				c.execute('''INSERT INTO wool_comparison VALUES(?, ?, ?, ?, ?, ?)''', info)
-				found = found + 1
-		if found == len(items): break
-	print('DONE!')
+		number_of_pages = get_number_of_pages()
+		found = 0
+		print('START...')
+		for page in range(1, number_of_pages + 1):
+			print('page number {}/{}'.format(str(page), number_of_pages))
+			soup = extract(page)
+			products = get_products(soup)
+			for key in products:
+				if key in items:
+					info = get_product_info(products[key])
+					c.execute('''INSERT INTO wool_comparison VALUES(?, ?, ?, ?, ?, ?)''', info)
+					found = found + 1
+			if found == len(items): break
+		print('DONE!')
 
-	conn.commit()
-	conn.close()
+		db.commit()
+
+	db.close()
 
 if __name__ == "__main__":
 	main()
