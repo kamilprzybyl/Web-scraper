@@ -1,29 +1,28 @@
 # # # -*- coding: utf-8 -*-
 from bs4 import BeautifulSoup
 import requests
-from csv import writer
 import sqlite3
 import datetime
 
-# I used sqlite3 as a database.
 # I was thinking about using selenium to search for an element
 # via the search-bar on top of the website.
 # But I've realized it consumes too much time to open the driver,
 # type in there, and then reload it again...
 # I search for the product by extracting the source code of every page
-# using BeautifulSoup library.
+# using BeautifulSoup.
 # Having a 'soup' I search for the product by its name
 # and extract the url to it.
 # With url we send a get request and extract products' source code
 # I search for the products' specifications, i.e. needle_size and
 # safe it in the list. The list is then saved into the database
-# Might be that you need to adjust the headers, that is your user agent
-# and pass them every time we call a get function
+# Might be that you need to adjust the headers, that is your user agent.
+
+# I used sqlite3 as a database.
+# To open the sqlite3 database in vs-code you need to install the sqlite extension
 
 # TODO: Schedule the script to run at specific times during the day
 
 # headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36"}
-
 items = ['Stylecraft Special DK', 
 		'DMC Natura XL',
 		'Drops Safran',
