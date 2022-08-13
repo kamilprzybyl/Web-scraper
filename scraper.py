@@ -2,14 +2,27 @@
 from bs4 import BeautifulSoup
 import requests
 from csv import writer
+import sqlite3
+import datetime
 
-# I was thinking about using selenium to search for an element in a search bar,
-# but I've realized it consumes too much time to open the driver and type in there
+# I used sqlite3 as a database.
+# I was thinking about using selenium to search for an element
+# via the search-bar on top of the website.
+# But I've realized it consumes too much time to open the driver,
+# type in there, and then reload it again...
+# I search for the product by extracting the source code of every page
+# using BeautifulSoup library.
+# Having a 'soup' I search for the product by its name
+# and extract the url to it.
+# With url we send a get request and extract products' source code
+# I search for the products' specifications, i.e. needle_size and
+# safe it in the list. The list is then saved into the database
+# Might be that you need to adjust the headers, that is your user agent
+# and pass them every time we call a get function
 
 # TODO: Schedule the script to run at specific times during the day
-# TODO: Create a database and store csv files in it
 
-headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36"}
+# headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36"}
 
 items = ['Stylecraft Special DK', 
 		'DMC Natura XL',
@@ -19,7 +32,7 @@ items = ['Stylecraft Special DK',
 
 def get_delivery_time():
 	url = 'https://www.wollplatz.de/versandkosten-und-lieferung'
-	r = requests.get(url, headers=headers)
+	r = requests.get(url)
 	soup = BeautifulSoup(r.content, 'html.parser')
 	table = soup.find('div', style='overflow-x: auto')
 	tokens = []
@@ -32,7 +45,7 @@ def get_delivery_time():
 # Extracts page source code 
 def get_page_info(page):
 	url = 'https://www.wollplatz.de/wolle?page={}'.format(page)
-	r = requests.get(url, headers=headers)
+	r = requests.get(url)
 	soup = BeautifulSoup(r.content, 'html.parser')
 	return soup
 
@@ -50,7 +63,7 @@ def get_products(soup):
 	return my_dict
 
 def get_product_info(url):
-	r = requests.get(url, headers=headers)
+	r = requests.get(url)
 	soup = BeautifulSoup(r.content, 'html.parser')
 
 	name = soup.find('h1', id='pageheadertitle').text.strip()
@@ -63,35 +76,37 @@ def get_product_info(url):
 		specifications_tokens.append(title)
 	needle_size_index = specifications_tokens.index('Nadelstärke') + 1
 	composition_index = specifications_tokens.index('Zusammenstellung') + 1
-	composition = specifications_tokens[needle_size_index]
-	needle_size = specifications_tokens[composition_index]
-	result = [name, price, get_delivery_time(), needle_size, composition]
+	composition = specifications_tokens[composition_index]
+	needle_size = specifications_tokens[needle_size_index]
+	e = datetime.datetime.now()
+	current_date = "{}/{}/{} {}:{}:{}".format(e.day, e.month, e.year, e.hour, e.minute, e.second)
+
+	result = [current_date, name, price, get_delivery_time(), needle_size, composition]
 	return result
 
-
 def main():
-	try:
-		f = open('wool_comparison.csv', 'w', encoding='utf8', newline='')
-	except OSError:
-		print('Could not open file wool_comparison.csv')
-		sys.exit()
+	conn = sqlite3.connect('wool_comparison.db')
+	c = conn.cursor()
+	# The line below creates the table. Since I've already created one I commented it out
+	c.execute('''CREATE TABLE wool_comparison(Date DATE, Name TEXT, Price TEXT, Delivery_time TEXT, Needle_size TEXT, Composition TEXT)''')
 
-	with f:
-		thewriter = writer(f)
-		head = ['Name', 'Price', 'Delivery time', 'Needle size', 'Composition']
-		thewriter.writerow(head)
-		number_of_pages = 32
-		found = 0
-		for page in range(1, number_of_pages):
-			print('page number ' + str(page))
-			page_info = get_page_info(page)
-			products = get_products(page_info)
-			for key in products:
-				if key in items:
-					info = get_product_info(products[key])
-					thewriter.writerow(info)
-					found = found + 1
-			if found == len(items): break
+	number_of_pages = 32
+	found = 0
+	print('START...')
+	for page in range(1, number_of_pages + 1):
+		print('page number {}/{}'.format(str(page), number_of_pages))
+		page_info = get_page_info(page)
+		products = get_products(page_info)
+		for key in products:
+			if key in items:
+				info = get_product_info(products[key])
+				c.execute('''INSERT INTO wool_comparison VALUES(?, ?, ?, ?, ?, ?)''', info)
+				found = found + 1
+		if found == len(items): break
+	print('DONE!')
+
+	conn.commit()
+	conn.close()
 
 if __name__ == "__main__":
 	main()
