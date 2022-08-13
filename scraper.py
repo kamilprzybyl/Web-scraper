@@ -110,7 +110,10 @@ def main():
 	with sqlite3.connect(db_path) as db:
 		c = db.cursor()
 		if (table_exists(db, "wool_comparison") == False):
-			c.execute('''CREATE TABLE wool_comparison(Date DATE, Name TEXT, Price TEXT, Delivery_time TEXT, Needle_size TEXT, Composition TEXT)''')
+			c.execute('''
+				CREATE TABLE wool_comparison(Date DATE, Name TEXT, 
+				Price TEXT, Delivery_time TEXT, Needle_size TEXT, Composition TEXT)
+				''')
 
 		number_of_pages = get_number_of_pages()
 		found = 0
@@ -122,7 +125,9 @@ def main():
 			for key in products:
 				if key in items:
 					info = get_product_info(products[key])
-					c.execute('''INSERT INTO wool_comparison VALUES(?, ?, ?, ?, ?, ?)''', info)
+					c.execute('''
+						INSERT INTO wool_comparison VALUES(?, ?, ?, ?, ?, ?)
+						''', info)
 					found = found + 1
 			if found == len(items): break
 		print('DONE!')
